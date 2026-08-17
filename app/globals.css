@@ -1,0 +1,1018 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+
+  /* Display face for headings — Geist Pixel Square. It ships a single weight
+     (500); the synthetic 600 that `font-semibold` produces thickens cleanly, so
+     headings keep their existing weight/tracking utilities. Exposed as
+     `font-pixel` for the few display strings that aren't <h*> elements (the
+     builder's inline title editors, which must match the voter's headings). */
+  --font-pixel: var(--font-geist-pixel-square), ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+
+  /* Motion — strong custom curves (the built-in CSS easings are too weak). These
+     override Tailwind's `ease-out`/`ease-in-out` utilities and become the default
+     for every `transition-*` utility, so the whole app feels snappy by default. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --default-transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  --default-transition-duration: 180ms;
+
+  --color-bg: #ffffff;
+  --color-card: #ffffff;
+  --color-ink: #18191d;
+  --color-muted: #76798a;
+  --color-line: #ededec;
+  --color-line-strong: #e3e3e0;
+
+  /* Status accents for form state (Draft / Open / Closed). Muted to sit inside
+     the existing palette rather than shout. */
+  --color-draft: #9a6a12;
+  --color-draft-bg: #fbf3e3;
+  --color-open: #15803d;
+  --color-open-bg: #eaf7ee;
+  --color-closed: #76798a;
+  --color-closed-bg: #f2f2f1;
+
+  /* Selection. The one hue in the app that means "you chose this" — every
+     other colour here reports something the system found (a verdict, a state,
+     a battery), and mixing the two would have a ticked market reading as a
+     passing one. Blue because nothing else in the palette is blue, so it can
+     only mean the thing it means. Kept a shade off pure primary so it sits
+     with the greens and ambers rather than in front of them. */
+  --color-pick: #2f62d8;
+  --color-pick-bg: #eff3fd;
+}
+
+/*
+ * Elevation — five steps, and every one of them two layers.
+ *
+ * There were thirteen distinct arbitrary shadows in the app and no two of them
+ * agreed: 0_6px_20px_-18px on a card, 0_0_60px_-12px on one slide-over and
+ * 0_0_60px_-20px on another, a menu at -18px beside a tooltip at -14px. Nothing
+ * was decided; each was typed next to the thing it was for.
+ *
+ * All of them were also a single blur, which is why they read as grey haze
+ * rather than as height. A real shadow is two: a short tight one where the
+ * object nearly touches the page, and a long soft one from the ambient light.
+ * The pair is what makes 20px of lift look like 20px rather than like a
+ * blurred outline.
+ *
+ * The scale is by *role*, not by size, so the choice at a call site is "what is
+ * this" rather than "how dark" — and two menus can't land on different steps
+ * because they were written a week apart.
+ *
+ * All of it is very light. The first pass at two layers was correct in shape
+ * and far too strong in value — a menu at 24% and a dialog at 36% put grey
+ * clouds under everything on a page whose whole language is a hairline border.
+ * Nothing here goes past 20%, most of it sits under 10%, and the tight layer
+ * is a hair rather than a band. The border is still doing the work; the shadow
+ * only says which side of it is nearer.
+ *
+ * Plain classes rather than @theme tokens: Tailwind generated no `shadow-*`
+ * utilities from a `--shadow-*` block here, so every one of these silently
+ * computed to `none`. Caught by reading getComputedStyle rather than by
+ * looking at the page, where "slightly flatter" is invisible.
+ */
+:root {
+  --shadow-raise: 0 1px 2px -1px rgb(20 20 20 / 0.03), 0 3px 10px -8px rgb(20 20 20 / 0.06);
+  --shadow-inset-tab: 0 1px 2px -1px rgb(20 20 20 / 0.05);
+  --shadow-float: 0 1px 2px -1px rgb(20 20 20 / 0.04), 0 6px 16px -12px rgb(20 20 20 / 0.10);
+  --shadow-pop: 0 1px 2px -1px rgb(20 20 20 / 0.04), 0 10px 26px -14px rgb(20 20 20 / 0.13);
+  --shadow-panel: 0 2px 5px -3px rgb(20 20 20 / 0.05), 0 16px 44px -28px rgb(20 20 20 / 0.18);
+  --shadow-dialog: 0 2px 6px -3px rgb(20 20 20 / 0.05), 0 22px 56px -30px rgb(20 20 20 / 0.20);
+}
+
+/** A resting card. Barely there: the border does most of the work. */
+.shadow-raise { box-shadow: var(--shadow-raise); }
+/** The selected segment inside a track — a chip lifted off its own groove. */
+.shadow-inset-tab { box-shadow: var(--shadow-inset-tab); }
+/** A control floating over the page: the search field, the avatar. */
+.shadow-float { box-shadow: var(--shadow-float); }
+/** Menus, popovers, tooltips — attached to something, briefly above it. */
+.shadow-pop { box-shadow: var(--shadow-pop); }
+/** A slide-over. It floats clear of all four edges now, so the spread went
+    round with it — a shadow that only fell to the left was drawn for a panel
+    welded to the right of the window, and left the top and bottom corners
+    looking pasted on. */
+.shadow-panel { box-shadow: var(--shadow-panel); }
+/** The one thing in the middle of the screen, page dimmed behind it. */
+.shadow-dialog { box-shadow: var(--shadow-dialog); }
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Every heading renders in the pixel display face. Done as an element rule
+   rather than per-heading classes so new headings inherit it automatically.
+   It lives in `@layer base` on purpose: unlayered rules outrank every layer
+   regardless of specificity, so without the layer a `font-sans` utility could
+   not override this. Layered, utilities win and a heading can opt back out.
+
+   Which is what every heading of 20px or under does — add `font-sans`. The
+   pixel face is a display face: its square terminals and single weight carry a
+   40px page title, and turn to mush at the size of a card heading or a section
+   label. The cut-off is a rule, not a preference — a 17px dialog title in the
+   display face reads as a rendering fault, not as branding. */
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-pixel);
+  }
+}
+
+/* Figma-style corner smoothing on every rounded element. Progressive
+   enhancement: browsers without `corner-shape` just render normal rounding. */
+*,
+*::before,
+*::after {
+  corner-shape: superellipse(4);
+}
+
+/* Opt-out for the few elements that must be a true circle — an avatar or a
+   status dot. Corner smoothing is for rounded *rectangles*; on a square with a
+   full radius it renders a visible squircle. Deliberately opt-in: pills, tabs
+   and inputs keep the smoothed corners. Unlayered like the rule above, so its
+   class selector outranks the `*` there. */
+.u-circle {
+  corner-shape: round;
+}
+
+/* For a field whose placeholder *is* the value in force — the neutral answer's
+   wording falls back to generated text, and voters see that text. At the usual
+   placeholder weight it read as an empty field, i.e. as if the answer had no
+   label at all. Still lighter than typed text, so "the default" and "mine" stay
+   distinguishable. */
+.u-placeholder-strong::placeholder {
+  color: color-mix(in oklab, var(--color-ink) 70%, transparent);
+}
+
+/* A scroller whose affordance is carried by something else — paged arrows, a
+   half-visible next card. macOS hides overlay scrollbars anyway; this makes
+   Windows and Linux agree rather than parking a grey bar under the content.
+   Only for scrollers that offer another way through: hiding the bar on a
+   region whose only affordance IS the bar strands anyone who can't drag. */
+.u-noscrollbar {
+  scrollbar-width: none;
+}
+.u-noscrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Hero backdrop dithering.
+
+   A large gradient — however well tuned — still reads as a smooth CSS ramp and
+   shows banding on 8-bit displays. These three layers give it the texture of a
+   plotted surface instead:
+
+     .hero-dither       2px ordered checkerboard, alternating light/dark cells
+     .hero-dither-fine  3px dot grid, concentrated at the lit end
+     .hero-glyphs       a field of tiny Geist Pixel characters
+
+   Each is masked along the gradient's own 158° axis, so the texture is densest
+   through the mid-tones (where banding actually shows) and fades to nothing at
+   both extremes — the same falloff real ordered dithering has. All three use
+   soft-light so they modulate the colour underneath rather than laying grey over
+   it; the checkerboard alternates white and black cells so it both lifts and
+   deepens, which is what makes it read as stipple rather than a haze.
+   --------------------------------------------------------------------------- */
+.hero-dither,
+.hero-dither-fine,
+.hero-glyphs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+
+/* 3px cells rather than 2px: a 2px cell lands on half a device pixel at
+   fractional DPRs and browser zoom, which beats against the grid and shows up as
+   moiré streaks across a large panel. */
+.hero-dither {
+  background-image: conic-gradient(
+    rgba(255, 255, 255, 0.5) 0 25%,
+    rgba(0, 0, 0, 0.5) 0 50%,
+    rgba(255, 255, 255, 0.5) 0 75%,
+    rgba(0, 0, 0, 0.5) 0
+  );
+  background-size: 6px 6px;
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(158deg, transparent 4%, #000 34%, #000 62%, transparent 90%);
+  mask-image: linear-gradient(158deg, transparent 4%, #000 34%, #000 62%, transparent 90%);
+}
+
+.hero-dither-fine {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.8) 0.75px, transparent 1px);
+  background-size: 5px 5px;
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(158deg, #000 0%, transparent 44%);
+  mask-image: linear-gradient(158deg, #000 0%, transparent 44%);
+}
+
+/* Character field. `background-image` is set inline from HERO_GLYPH_TILE and
+   repeats, so it covers any panel — see the note there for why this stopped
+   being DOM text. */
+.hero-glyphs {
+  background-repeat: repeat;
+  opacity: 0.38;
+  -webkit-mask-image: linear-gradient(158deg, transparent 10%, #000 46%, #000 70%, transparent 96%);
+  mask-image: linear-gradient(158deg, transparent 10%, #000 46%, #000 70%, transparent 96%);
+}
+
+/* ---------------------------------------------------------------------------
+   Embedded prototype "device": a 375×812 phone surface scaled down so two fit
+   side by side. The wrapper reserves the scaled box; .screen is the real size.
+   --------------------------------------------------------------------------- */
+.device {
+  --s: 0.8;
+  width: calc(375px * var(--s));
+  height: calc(812px * var(--s));
+  position: relative;
+  flex: none;
+}
+.device > .screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 375px;
+  height: 812px;
+  transform: scale(var(--s));
+  transform-origin: top left;
+  border-radius: 38px;
+  overflow: hidden;
+  background: #fff;
+}
+.device iframe {
+  width: 375px;
+  height: 812px;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+@media (max-width: 520px) {
+  .device {
+    --s: 0.7;
+  }
+}
+
+/* Auto-growing inline editors for the live-editable builder canvas. Textareas
+   size to their content where supported; a min-height keeps a sensible floor. */
+.field-auto {
+  field-sizing: content;
+}
+
+/* ---------------------------------------------------------------------------
+   Micro-interactions (Emil Kowalski's design-engineering philosophy).
+   --------------------------------------------------------------------------- */
+
+/* Universal press feedback: every pressable element scales down slightly, so the
+   UI feels like it's truly listening. Buttons that already carry a `transition`
+   utility keep it (higher specificity); the rest inherit a transform transition. */
+button,
+[role="button"],
+summary {
+  transition-property: transform, background-color, border-color, color, opacity, box-shadow, filter;
+  transition-timing-function: var(--ease-out);
+  transition-duration: 160ms;
+}
+/* aria-disabled counts as disabled here: a control that explains why it's
+   blocked stays focusable and hoverable (so its tooltip is reachable), but it
+   shouldn't answer a press as though it did something. */
+button:not(:disabled):not([aria-disabled="true"]):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.97);
+}
+
+/* Origin-aware entrances. Modals scale from center; popovers scale from their
+   trigger edge. Nothing appears from scale(0) — always 0.96 + opacity. */
+.u-overlay {
+  transition: opacity 200ms var(--ease-out);
+}
+.u-modal {
+  transition:
+    opacity 220ms var(--ease-out),
+    transform 220ms var(--ease-out);
+}
+.u-popover {
+  transition:
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+/* A slide-over, arriving from the edge it lives on.
+   
+   It shared .u-modal with the search palette — a scale-up from 96%, which is
+   right for a thing that belongs in the middle of the screen and wrong for one
+   that belongs against the right of it: the panel appeared where it already
+   was, slightly small, instead of coming from anywhere. Off the right edge and
+   in, so the gesture matches the geometry. Slightly longer than the fade
+   because it covers real distance. */
+.u-sheet {
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 320ms var(--ease-out);
+}
+
+/* The page behind an open deck. A keyframe rather than a transition with a
+   starting style: @starting-style turned out to be conditional in a way this
+   app cannot rely on (see .u-sheet-in), and a scrim that fails to fade is a
+   scrim that appears as a slab. Shallow — 12% — because the deck is a tray on
+   the same page, not a dialog that has taken it over. */
+@keyframes u-dim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.u-dim {
+  transition: opacity 300ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .u-dim {
+    transition: none;
+  }
+}
+
+/* A selection travelling between siblings — the tab underline, the slice
+   marker. Position and size only; the thing itself never fades, because a
+   selection that dissolves and reappears is two selections. Slightly quicker
+   than the container morph: this is a short hop between neighbours, and the
+   same 420ms over 60px would feel like treacle. */
+.u-slide {
+  transition:
+    left 260ms cubic-bezier(0.32, 0.72, 0, 1),
+    width 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .u-slide {
+    transition: none !important;
+  }
+}
+
+/*
+ * A container changing size — the deck growing into a card and back.
+ *
+ * The app's default curve is cubic-bezier(0.23, 1, 0.32, 1): almost all of the
+ * distance in the first third, then a long settle. That is right for a button
+ * or a menu, where the point is that the thing has already happened. It is
+ * wrong for a box travelling 800px of width and 400px of height at once —
+ * that much movement front-loaded reads as a lurch, and the eye loses the edge
+ * it was following.
+ *
+ * cubic-bezier(0.32, 0.72, 0, 1) leaves more of the distance in the middle and
+ * still lands without overshoot, so the edges travel at something like a
+ * constant speed and arrive together. Slower too: 420ms, because a morph is a
+ * thing you watch rather than a thing you dismiss.
+ *
+ * They share the curve but not the duration, and that is the direction.
+ *
+ * Run together, the box widens and heightens at the same rate and reads as
+ * growing out of its own centre. The deck is anchored to the bottom of the
+ * window, so what it should look like is a thing rising: the width settles
+ * early — 240ms, most of it over before the eye has committed — and the
+ * remaining 180ms is purely vertical, which is the part that gets watched.
+ * Same curve on both, so the brief diagonal at the start is still smooth.
+ */
+.u-morph-w {
+  transition: width 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.u-morph-h {
+  transition: grid-template-rows 420ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* What appears inside it, rising out from behind the controls — and only
+   rising. Starting it low and letting it come up is the same direction the box
+   itself travels, so the two read as one movement. No opacity in it: the box
+   growing already says something arrived, and a fade saying it a second time
+   is the content looking unsure. */
+/* `translate` as well as `transform`: Tailwind v4 emits `translate-y-*` as the
+   standalone `translate` property, so a transition naming only `transform`
+   animates nothing and the content simply appears at its final offset. */
+.u-morph-in {
+  transition:
+    translate 380ms 60ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 380ms 60ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.u-morph-out {
+  transition:
+    translate 270ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 270ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-morph-w,
+  .u-morph-h,
+  .u-morph-in,
+  .u-morph-out {
+    transition: none !important;
+  }
+}
+
+/*
+ * The same arrival, driven by a keyframe rather than a starting style.
+ *
+ * `.u-sheet` depends on @starting-style, and that turns out to be conditional
+ * in a way this app cannot rely on: under the runs list's report panel the
+ * starting style applied and the transition never ran, leaving the sheet
+ * parked at opacity 0 and translateX(100% + 24px) — measured on production as
+ * matrix(1,0,0,1,1084,0), present in the DOM, invisible on screen, seconds
+ * after opening. Restructuring the parent to match the panel where it does
+ * work changed nothing.
+ *
+ * An animation has no such condition: it runs when the element is inserted,
+ * every time, and `both` holds the final frame. Same curve, same distance,
+ * same 320ms.
+ */
+@keyframes u-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(100% + 24px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A confirmation that rises out of the thing it is confirming.
+   Short, and on the container curve, because it appears directly above a box
+   that moves on that curve — a toast easing differently from the deck it sits
+   on reads as a second, unrelated object. */
+@keyframes u-toast {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.u-toast {
+  animation: u-toast 220ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .u-toast {
+    animation: none;
+  }
+}
+
+.u-sheet-in {
+  animation: u-sheet-in 320ms var(--ease-out) both;
+}
+
+/* The same idea from the bottom edge, for a drawer that belongs to the foot of
+   the screen rather than its side — the journey strip rises over the slide it
+   describes instead of arriving from off to the right. */
+.u-sheet-up {
+  transition: transform 300ms var(--ease-out);
+}
+@starting-style {
+  .u-overlay {
+    opacity: 0;
+  }
+  .u-modal {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  .u-popover {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  .u-sheet {
+    opacity: 0;
+    transform: translateX(calc(100% + 24px));
+  }
+  .u-sheet-up {
+    transform: translateY(102%);
+  }
+}
+
+/* Content swap — crossfade + tiny rise when a keyed region's content changes
+   (e.g. switching modal tabs), so states morph rather than snap. */
+.u-swap {
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+@starting-style {
+  .u-swap {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Staggered list entrance — a gentle cascade instead of everything at once. */
+@keyframes u-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.u-stagger > * {
+  animation: u-fade-up 340ms var(--ease-out) both;
+}
+.u-stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.u-stagger > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+.u-stagger > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.u-stagger > *:nth-child(4) {
+  animation-delay: 135ms;
+}
+.u-stagger > *:nth-child(5) {
+  animation-delay: 180ms;
+}
+.u-stagger > *:nth-child(6) {
+  animation-delay: 225ms;
+}
+.u-stagger > *:nth-child(n + 7) {
+  animation-delay: 270ms;
+}
+
+/* The pass track — a wave running along the completed marks.
+
+   One keyframe on every done cell, with the delay set per cell in the
+   component, so the dip travels left to right instead of the whole row
+   blinking together. That difference is the whole point: a row pulsing in
+   unison is a status light, and a wave moving in the direction of travel is
+   the run getting on with it.
+
+   Slow (2.6s round, 60ms between cells) and shallow — it never leaves the
+   colour, only takes a little weight out of it. */
+@keyframes u-track-wave {
+  0%, 45%, 100% { opacity: 1; }
+  18% { opacity: 0.42; }
+}
+.u-track-wave {
+  animation: u-track-wave 2.6s var(--ease-in-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-track-wave {
+    animation: none;
+  }
+}
+
+/* Live progress — a sheen travelling along the filled part of a bar.
+   Reserved for a run that is genuinely executing: it is the only continuously
+   moving thing on the overview, so movement itself has to mean "this one is
+   happening now". Slow (2.4s) and low-contrast on purpose — a fast shimmer is
+   a loading skeleton, which says the opposite thing. */
+@keyframes u-live-bar {
+  0% { background-position: -140% 0; }
+  100% { background-position: 240% 0; }
+}
+.u-live-bar {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.28) 45%,
+    rgb(255 255 255 / 0.28) 55%,
+    transparent 100%
+  );
+  background-size: 60% 100%;
+  background-repeat: no-repeat;
+  animation: u-live-bar 2.4s linear infinite;
+  transition: width 600ms var(--ease-out);
+}
+
+/* The pass being walked right now. A slow breath rather than a blink: the grid
+   can have two or three of these at once, and blinking cells read as an error
+   state. */
+@keyframes u-live-cell {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.u-live-cell {
+  animation: u-live-cell 1.8s var(--ease-in-out) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-live-bar,
+  .u-live-cell {
+    animation: none;
+  }
+}
+
+/* Celebratory pop — reserved for rare, first-time moments (Emil's framework
+   allows delight where an animation is seen infrequently). */
+@keyframes u-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.u-pop {
+  animation: u-pop 380ms var(--ease-out) both;
+}
+
+/* Attention flash — pulse a panel section to draw the eye after a related action
+   elsewhere (e.g. clicking "add feedback widget" flashes the input picker). Two
+   quick pulses of tint + inset ring, then settle. */
+@keyframes u-flash {
+  0% { background-color: transparent; box-shadow: inset 0 0 0 0 rgba(24, 25, 29, 0); }
+  15% { background-color: rgba(24, 25, 29, 0.06); box-shadow: inset 0 0 0 2px rgba(24, 25, 29, 0.28); }
+  30% { background-color: transparent; box-shadow: inset 0 0 0 0 rgba(24, 25, 29, 0); }
+  45% { background-color: rgba(24, 25, 29, 0.06); box-shadow: inset 0 0 0 2px rgba(24, 25, 29, 0.28); }
+  100% { background-color: transparent; box-shadow: inset 0 0 0 0 rgba(24, 25, 29, 0); }
+}
+.u-flash {
+  animation: u-flash 1000ms var(--ease-out);
+}
+
+/* Page-to-page transition — the incoming screen rises from below and fades in,
+   giving a Typeform-style vertical shift (as if scrolled to the next page). */
+@keyframes u-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.u-rise {
+  animation: u-rise 420ms var(--ease-out) both;
+}
+
+/* View switch — Editor · Preview · Results. The header is the same bar on all
+   three, so only the body announces the change: it settles in from a few pixels
+   below rather than cutting. Shorter and shallower than u-rise, which moves a
+   whole screen; this is a swap inside one. */
+@keyframes u-view {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.u-view {
+  animation: u-view 240ms var(--ease-out) both;
+}
+
+/* Accessibility: honour reduced-motion — keep opacity fades, drop movement. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  button:not(:disabled):active,
+  [role="button"]:active {
+    transform: none;
+  }
+}
+
+
+/*
+ * The document, on paper.
+ *
+ * Print reaches the report through the browser rather than a server, so the
+ * page has to take its own chrome off: the app bar, the tab strip and the deck
+ * are all ways of moving around a thing that, once printed, cannot be moved
+ * around. What is left is the document view, which is the mode the print
+ * button switches to first — one column, every finding, in order.
+ *
+ * The viewer is `fixed inset-0`, which on paper means one viewport-tall page
+ * and nothing after it. Static, so the content flows and the printer paginates
+ * it.
+ */
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+  .print-flow {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The run sheet expanding into the report
+   --------------------------------------------------------------------------- */
+
+/**
+ * One name on two boxes, and the browser does the rest.
+ *
+ * The run sheet's panel and the report's own surface both carry `.u-morph-run`.
+ * Given a view transition, the browser pairs them by that name and animates the
+ * difference — an inset 880px box with 20px corners growing to fill the window —
+ * so pressing View report expands the thing you were already reading rather than
+ * replacing it with a different screen.
+ *
+ * Only the group is animated. Cross-fading the old and new snapshots on top of a
+ * box that is also changing size double-exposes the content mid-flight, which
+ * reads as a glitch rather than as a movement; letting the new state paint
+ * immediately inside a morphing frame is what makes it look like one object.
+ */
+.u-morph-run {
+  view-transition-name: run-surface;
+}
+
+::view-transition-group(run-surface) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/**
+ * The old surface is not drawn at all; the new one is drawn at once.
+ *
+ * Both had `animation: none`, which does not mean "not shown" — it means "shown,
+ * unchanging, for the whole transition". The old snapshot paints above the new
+ * one, so the report's pixels sat over the sheet's for the full 320ms while the
+ * frame around them shrank, and then vanished. The box moved and the content
+ * changed in one frame at the end: the snap.
+ *
+ * `opacity: 0` on the old is what makes it a morph. The new state paints
+ * immediately inside a frame that is still travelling, so the panel you land on is
+ * the panel you watched arrive — one object resizing, which is what the shared
+ * name promised.
+ *
+ * Still no cross-fade. Fading the two into each other over a box that is also
+ * changing size double-exposes the content mid-flight, which reads as a glitch;
+ * the honest options are dissolve *or* move, and this one moves.
+ */
+::view-transition-old(run-surface) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(run-surface) {
+  animation: none;
+  mix-blend-mode: normal;
+  height: 100%;
+  overflow: clip;
+}
+
+/**
+ * The same trick for the new-run form's two shapes.
+ *
+ * The panel's sheet and the full-page variant's surface both carry
+ * `.u-morph-new-run`, so switching between them is the 880px sheet growing to
+ * fill the window and shrinking back — the same movement the report already
+ * makes, because it is the same question being asked: is this thing a panel over
+ * what I was doing, or the whole screen.
+ *
+ * Its own name rather than `run-surface`. The two pairs are never on screen
+ * together, so sharing one would work today and break the first time a report
+ * opens over a new-run sheet: two boxes claiming one `view-transition-name` in a
+ * single snapshot makes the browser drop the pairing and cut instead.
+ */
+.u-morph-new-run {
+  view-transition-name: new-run-surface;
+}
+
+::view-transition-group(new-run-surface) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/* Move, don't dissolve — see the note on run-surface above; the reasoning and
+   the failure it fixes are identical. */
+::view-transition-old(new-run-surface) {
+  animation: none;
+  opacity: 0;
+}
+
+::view-transition-new(new-run-surface) {
+  animation: none;
+  mix-blend-mode: normal;
+  height: 100%;
+  overflow: clip;
+}
+
+/**
+ * Everything on one clock and one curve.
+ *
+ * The root cross-fade ran 240ms on the browser's default ease while the panel
+ * morphed 320ms on ours. On this navigation the root is nearly the whole picture —
+ * leaving the report means the rail, the runs list and the scrim all arrive at
+ * once behind a panel that is still travelling — so the background settled 80ms
+ * early, on a different curve, and then the panel carried on. Two things moving
+ * out of step is the jerk; it is not the morph, it is what the morph is happening
+ * in front of.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-out);
+}
+
+/**
+ * Nothing animates itself while the morph is animating it.
+ *
+ * The sheet's slide-in and the stagger on its figures are entrance animations —
+ * right when the panel appears on its own, wrong when it appears as the far end of
+ * a morph, because the browser is already moving that box and these move its
+ * contents against it. Suppressed for the duration and restored after, so a sheet
+ * opened from the list still slides and one arrived at from the report simply
+ * lands.
+ */
+.u-morphing .u-sheet {
+  animation: none !important;
+}
+
+/* Neither `.u-sheet-in` nor `.u-stagger` is listed, and that is the whole lesson
+   here: suppressing an entrance with `animation: none` and then lifting it does
+   not cancel the animation, it starts it. That is how the sheet came to morph into
+   place and then slide in from the side, and how the figures came to sit still and
+   then deal themselves in. Both decide at mount whether they carry their class at
+   all — DetailSheet and Cards — so there is nothing left to suppress. */
+
+/* The scrim keeps its fade. Suppressing it put a hard dimmed edge on the page on
+   the transition's first frame, under a panel that had not arrived yet — the one
+   entrance animation here that belongs to the background rather than to the box
+   being morphed. */
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* A highlighter drawn under the strongest claim on a finding card.
+
+   The badges stopped being filled chips because two plates at the head of a
+   card out-weighed the sentence they label. But "high confidence" is not the
+   same kind of fact as "Arabic" — one says which string was read, the other
+   says how much the report is standing behind the thing you are about to act
+   on — and set as plain type they had become the same weight. This gives the
+   claim its emphasis back without giving it a plate: the mark is drawn on
+   arrival rather than sitting there, so it reads as the card making a point
+   and then settling, not as a second badge.
+
+   Wiped in rather than faded. A block that fades up appears; a mark that
+   travels left to right is drawn, which is what a highlighter does and the
+   reason this reads as emphasis rather than as a background colour someone
+   chose. `scaleX` from the left edge, so it costs a composited transform and
+   no layout.
+
+   The mark carries the colour and the word stays black. Set in red on a red
+   wash the label was one colour at two strengths, which is a smudge behind a
+   word rather than a highlight of it; black on the wash is the pairing an
+   actual highlighter makes, and the grade still reads at a glance because the
+   colour is the thing that moved.
+
+   Which colour is the grade's, through `--mark`: red for high, amber for
+   medium. The variable rather than two rules, because everything else about
+   the mark — the size, the wipe, the timing, the reduced-motion behaviour —
+   is the same for both, and duplicating a block to change one value is how
+   the two drift apart later.
+
+   12%: enough to hold under black text, still below the `bg-black/[0.05]` the
+   ghost buttons take on hover — it has to survive being looked at on every
+   slide, and anything competing with the title has failed. The 240ms delay
+   lets the slide's own entrance land first; both moving at once reads as one
+   busy frame rather than as a sequence.
+
+   `both`, so it holds at scaleX(0) through the delay and stays at 1 after.
+   Without the fill the mark is full-width for the first four frames, which is
+   precisely the flash the animation exists to avoid. */
+@keyframes u-mark-in {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.u-mark {
+  position: relative;
+  isolation: isolate;
+}
+.u-mark::before {
+  content: '';
+  position: absolute;
+  inset: -3px -5px;
+  z-index: -1;
+  border-radius: 3px;
+  background: var(--mark, var(--color-red-600));
+  opacity: 0.12;
+  transform-origin: left center;
+  animation: u-mark-in 620ms var(--ease-out) 240ms both;
+}
+
+/* Medium's amber. Low has no mark at all: a third highlighter would make the
+   grade a colour to decode rather than one to notice, and "low" is the rung
+   that wants least attention, not a quieter shade of the same emphasis. */
+.u-mark-warn {
+  --mark: var(--color-draft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The mark stays — it is emphasis, not decoration, and removing it would
+     take the distinction between the badges with it. Only the drawing goes. */
+  .u-mark::before {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
+/* A menu opening under the field that owns it.
+
+   The step parameters borrowed `.u-pop` at first, which is the celebratory
+   overshoot reserved for rare moments: 380ms, from 60% scale, through 106% and
+   back — about its own centre, so a four-item list ballooned out of the middle
+   of nowhere and bounced. That is a lovely animation for something you see
+   twice and an irritating one for a control you open on half the steps in a
+   plan.
+
+   This is the same idea at a menu's weight. It grows from its top-left, which
+   is the corner it is attached to, so the movement reads as the list coming
+   out of the field rather than appearing beside it. 150ms, because a menu that
+   takes longer than the hand does is a menu you wait for; a 4px drop and a
+   1.5% scale, which is enough to read as motion and not enough to be a
+   gesture. No overshoot — the list has to be pointable the instant it stops,
+   and a bounce means the row under the cursor is still moving. */
+@keyframes u-menu {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.u-menu {
+  transform-origin: top left;
+  animation: u-menu 150ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-menu {
+    animation: none;
+  }
+}
+
+/* A control arriving with the change that produced it.
+
+   The step parameter mounts when its step is switched on, and a mount is
+   instant: the field appeared a frame after the box filled and the border
+   moved, so one action read as two. 200ms on the same curve as those, from
+   nothing and 4px to the right — it comes from the direction the row's content
+   grows rather than dropping in from above.
+
+   In only. React takes the field out of the tree on the way out, and animating
+   that would mean holding a control on screen for a step the run is no longer
+   going to walk. */
+@keyframes u-fade {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.u-fade {
+  animation: u-fade 200ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-fade {
+    animation: none;
+  }
+}
